@@ -57,7 +57,7 @@ test.describe('To Do App - Critical User Journeys', () => {
     await todoPage.addTask(taskName, dueDate);
 
     await expect(todoPage.getTaskItem(taskName)).toBeVisible();
-    await expect(todoPage.getDueDateChip(dueDate)).toBeVisible();
+    await expect(todoPage.getDueDateChip(taskName, dueDate)).toBeVisible();
   });
 
   test('should sort tasks by due date', async () => {

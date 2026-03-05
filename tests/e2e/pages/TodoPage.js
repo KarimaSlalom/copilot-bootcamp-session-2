@@ -73,8 +73,11 @@ class TodoPage {
     return this.page.getByText(name, { exact: true });
   }
 
-  getDueDateChip(date) {
-    return this.page.getByText(date, { exact: true });
+  getDueDateChip(taskName, date) {
+    return this.page
+      .getByRole('listitem')
+      .filter({ hasText: taskName })
+      .getByText(date, { exact: true });
   }
 }
 

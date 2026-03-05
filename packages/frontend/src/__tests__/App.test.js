@@ -91,6 +91,8 @@ describe('App Component', () => {
   });
 
   test('handles fetch API error', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
     server.use(
       rest.get('/api/items', (req, res, ctx) => {
         return res(ctx.status(500));
@@ -104,6 +106,8 @@ describe('App Component', () => {
     await waitFor(() => {
       expect(screen.getByText(/Failed to fetch tasks/)).toBeInTheDocument();
     });
+
+    consoleSpy.mockRestore();
   });
 
   test('shows empty state when no tasks', async () => {
@@ -141,5 +145,163 @@ describe('App Component', () => {
     await waitFor(() => {
       expect(screen.queryByText('Test Task 1')).not.toBeInTheDocument();
     });
+  });
+
+  test('toggles a task complete', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Task 1')).toBeInTheDocument();
+    });
+
+    const checkbox = screen.getByRole('checkbox', { name: /mark "Test Task 1"/i });
+    await act(async () => {
+      await user.click(checkbox);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Task 1')).toHaveStyle({ textDecoration: 'line-through' });
+    });
+  });
+
+  test('edits a task name', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Task 1')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /edit "Test Task 1"/i }));
+    });
+
+    const editInput = screen.getByRole('textbox', { name: /edit task name/i });
+    await act(async () => {
+      await user.clear(editInput);
+      await user.type(editInput, 'Renamed Task');
+    });
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /save edit/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Renamed Task')).toBeInTheDocument();
+    });
+  });
+
+  test('shows error when adding a task fails', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    server.use(
+      rest.post('/api/items', (req, res, ctx) => res(ctx.status(500)))
+    );
+
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    });
+
+    const input = screen.getByRole('textbox', { name: /task name/i });
+    await act(async () => {
+      await user.type(input, 'Failing Task');
+      await user.click(screen.getByRole('button', { name: /add task/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  test('shows error when deleting a task fails', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    server.use(
+      rest.delete('/api/items/:id', (req, res, ctx) => res(ctx.status(500)))
+    );
+
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Task 1')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /delete "Test Task 1"/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  test('shows error when patching a task fails', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    server.use(
+      rest.patch('/api/items/:id', (req, res, ctx) => res(ctx.status(500)))
+    );
+
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Task 1')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      await user.click(screen.getByRole('checkbox', { name: /mark "Test Task 1"/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    consoleSpy.mockRestore();
+  });
+
+  test('dismisses an error when the alert close button is clicked', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    server.use(
+      rest.get('/api/items', (req, res, ctx) => res(ctx.status(500)))
+    );
+
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<App />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      await user.click(screen.getByRole('button', { name: /close/i }));
+    });
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    consoleSpy.mockRestore();
   });
 });
